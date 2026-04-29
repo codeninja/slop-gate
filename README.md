@@ -1,9 +1,11 @@
 # Slop Gate
 
-Slop Gate is a Claude Code plugin that adds lifecycle hooks to catch likely
-drift from the user's intent. When a drift pattern is found, the hook blocks the
-current action when the Claude Code event supports blocking and injects a
-reflection request that states:
+Slop Gate is a Claude Code plugin that adds lifecycle hooks to surface
+candidate intent drift. When a drift pattern is found, the hook injects an
+advisory reflection request as additional context on the current event so
+Claude can see and respond to it without halting. The one exception is
+`PreToolUse`, where the hook denies the planned tool call so the gate can
+prevent drift before it runs. The reflection request states:
 
 - the original task captured from `UserPromptSubmit`
 - the assumption being made
@@ -18,27 +20,6 @@ about unsupported completion, validation, readiness, or user-as-tester claims.
 Claude Code hooks do not expose hidden chain-of-thought; Slop Gate only sees the
 event payloads that Claude Code provides.
 
-## Plugin Layout
-
-- `.claude-plugin/plugin.json` declares the Claude Code plugin.
-- `.claude-plugin/marketplace.json` declares the local marketplace entry used
-  for permanent installation.
-- `commands/` provides `/slop-gate:*` slash commands for first-time setup,
-  history auditing, pattern ingestion, and verification.
-- `hooks/hooks.json` registers the hook on relevant Claude Code lifecycle
-  events.
-- `agents/pattern-curator.md` lets Claude reflect on mistakes and append or
-  extend the pattern repository.
-- `skills/reflect/SKILL.md` gives users a namespaced way to ask Claude to learn
-  from drift, for example `/slop-gate:reflect <mistake>`.
-- `patterns/drift-patterns.md` is the append-only markdown pattern repository
-  loaded by the hook.
-- `bin/slop-gate-hook` is the executable hook entrypoint.
-- `scripts/audit-claude-history.js` scans Claude Code transcript JSONL files and
-  creates a local candidate corpus for pattern curation.
-- `src/` contains the pattern engine, state handling, and event response logic.
-- `docs/drift-abstracts.md` maps the original `drift-findings.md` examples into
-  reusable detection families.
 
 ## Pattern Memory Policy
 
@@ -107,12 +88,6 @@ git push origin main
 claude plugin tag . --push
 ```
 
-The GitHub repository must be public before other users or Anthropic's plugin
-directory can install it:
-
-```bash
-gh repo edit codeninja/slop-gate --visibility public
-```
 
 To submit Slop Gate to Anthropic's public plugin directory, use the public
 GitHub repository URL in one of the submission forms linked in the Claude plugin
@@ -167,3 +142,25 @@ To keep the raw Claude debug and stream files after the e2e run:
 ```bash
 SLOP_GATE_E2E_KEEP=1 npm run test:e2e
 ```
+
+## Plugin Layout
+
+- `.claude-plugin/plugin.json` declares the Claude Code plugin.
+- `.claude-plugin/marketplace.json` declares the local marketplace entry used
+  for permanent installation.
+- `commands/` provides `/slop-gate:*` slash commands for first-time setup,
+  history auditing, pattern ingestion, and verification.
+- `hooks/hooks.json` registers the hook on relevant Claude Code lifecycle
+  events.
+- `agents/pattern-curator.md` lets Claude reflect on mistakes and append or
+  extend the pattern repository.
+- `skills/reflect/SKILL.md` gives users a namespaced way to ask Claude to learn
+  from drift, for example `/slop-gate:reflect <mistake>`.
+- `patterns/drift-patterns.md` is the append-only markdown pattern repository
+  loaded by the hook.
+- `bin/slop-gate-hook` is the executable hook entrypoint.
+- `scripts/audit-claude-history.js` scans Claude Code transcript JSONL files and
+  creates a local candidate corpus for pattern curation.
+- `src/` contains the pattern engine, state handling, and event response logic.
+- `docs/drift-abstracts.md` maps the original `drift-findings.md` examples into
+  reusable detection families.

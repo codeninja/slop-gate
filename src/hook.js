@@ -28,7 +28,7 @@ function handleHook(input, env = process.env) {
   if (patternRepoViolation) {
     const correction = buildCorrectionMessage({ input, state, finding: patternRepoViolation });
     saveState(input, state, env);
-    return blockForEvent(eventName, correction);
+    return respondForEvent(eventName, correction);
   }
 
   if (isPatternRepositoryToolEvent(input)) {
@@ -61,7 +61,7 @@ function handleHook(input, env = process.env) {
   });
   saveState(input, state, env);
 
-  return blockForEvent(eventName, correction);
+  return respondForEvent(eventName, correction);
 }
 
 function chooseFinding(findings) {
@@ -214,7 +214,7 @@ function summarizeEvidence(state) {
   return parts.join("\n");
 }
 
-function blockForEvent(eventName, correction) {
+function respondForEvent(eventName, correction) {
   if (eventName === "PreToolUse") {
     return json({
       hookSpecificOutput: {
@@ -222,31 +222,6 @@ function blockForEvent(eventName, correction) {
         permissionDecision: "deny",
         permissionDecisionReason: correction
       }
-    });
-  }
-
-  if (eventName === "PostToolUseFailure") {
-    return json({
-      hookSpecificOutput: {
-        hookEventName: "PostToolUseFailure",
-        additionalContext: correction
-      }
-    });
-  }
-
-  if (eventName === "TaskCreated" || eventName === "TaskCompleted") {
-    return { stdout: "", stderr: `${correction}\n`, exitCode: 2 };
-  }
-
-  if (
-    eventName === "PostToolUse" ||
-    eventName === "PostToolBatch" ||
-    eventName === "Stop" ||
-    eventName === "SubagentStop"
-  ) {
-    return json({
-      decision: "block",
-      reason: correction
     });
   }
 

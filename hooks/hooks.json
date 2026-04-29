@@ -25,19 +25,6 @@
         ]
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
-            "timeout": 5,
-            "statusMessage": "Checking tool result for intent drift"
-          }
-        ]
-      }
-    ],
     "PostToolUseFailure": [
       {
         "matcher": "",
@@ -47,18 +34,6 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
             "timeout": 5,
             "statusMessage": "Checking tool failure for intent drift"
-          }
-        ]
-      }
-    ],
-    "PostToolBatch": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
-            "timeout": 5,
-            "statusMessage": "Checking completed tool batch for intent drift"
           }
         ]
       }

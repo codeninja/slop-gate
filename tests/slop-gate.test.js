@@ -34,7 +34,7 @@ function parseStdout(result) {
   return JSON.parse(result.stdout);
 }
 
-test("Stop blocks premature completion and includes reflection context", () => {
+test("Stop surfaces advisory reflection for premature completion", () => {
   const env = tempEnv();
   submitPrompt(env);
 
@@ -50,11 +50,11 @@ test("Stop blocks premature completion and includes reflection context", () => {
   );
 
   const output = parseStdout(result);
-  assert.equal(output.decision, "block");
-  assert.match(output.reason, /Original task: "Fix the app and validate it on device"/);
-  assert.match(output.reason, /Assumption being made:/);
-  assert.match(output.reason, /Before continuing, self-reflect/);
-  assert.match(output.reason, /premature_completion/);
+  assert.equal(output.hookSpecificOutput.hookEventName, "Stop");
+  assert.match(output.hookSpecificOutput.additionalContext, /Original task: "Fix the app and validate it on device"/);
+  assert.match(output.hookSpecificOutput.additionalContext, /Assumption being made:/);
+  assert.match(output.hookSpecificOutput.additionalContext, /Before continuing, self-reflect/);
+  assert.match(output.hookSpecificOutput.additionalContext, /premature_completion/);
 });
 
 test("validation evidence suppresses premature completion finding", () => {
@@ -133,7 +133,7 @@ test("PostToolUseFailure injects context for blocked sleep stall", () => {
   assert.match(output.hookSpecificOutput.additionalContext, /Original task:/);
 });
 
-test("TaskCompleted uses exit code 2 so Claude receives feedback", () => {
+test("TaskCompleted surfaces advisory reflection for drift", () => {
   const env = tempEnv();
   submitPrompt(env, "session-task", "Fix multimodal support and validate it");
 
@@ -149,10 +149,10 @@ test("TaskCompleted uses exit code 2 so Claude receives feedback", () => {
     env
   );
 
-  assert.equal(result.stdout, "");
-  assert.equal(result.exitCode, 2);
-  assert.match(result.stderr, /user_as_tester/);
-  assert.match(result.stderr, /Fix multimodal support and validate it/);
+  const output = parseStdout(result);
+  assert.equal(output.hookSpecificOutput.hookEventName, "TaskCompleted");
+  assert.match(output.hookSpecificOutput.additionalContext, /user_as_tester/);
+  assert.match(output.hookSpecificOutput.additionalContext, /Fix multimodal support and validate it/);
 });
 
 test("Stop hook does not loop while stop_hook_active is true", () => {
@@ -213,8 +213,8 @@ Challenge: Reflect on the custom signal before continuing.
   );
 
   const output = parseStdout(result);
-  assert.equal(output.decision, "block");
-  assert.match(output.reason, /custom_markdown_pattern/);
+  assert.equal(output.hookSpecificOutput.hookEventName, "Stop");
+  assert.match(output.hookSpecificOutput.additionalContext, /custom_markdown_pattern/);
 });
 
 test("pattern repository edits are append-only without explicit approval", () => {
@@ -295,8 +295,8 @@ test("hook executable reads stdin and emits JSON correction", () => {
   assert.equal(result.status, 0);
   assert.equal(result.stderr, "");
   const output = JSON.parse(result.stdout);
-  assert.equal(output.decision, "block");
-  assert.match(output.reason, /premature_completion/);
+  assert.equal(output.hookSpecificOutput.hookEventName, "Stop");
+  assert.match(output.hookSpecificOutput.additionalContext, /premature_completion/);
 });
 
 test("history audit extracts candidate drift episodes from Claude transcripts", () => {
