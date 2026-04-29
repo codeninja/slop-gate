@@ -1,0 +1,8 @@
+.firecrawl/
+.slop-gate-data/
+coverage/
+node_modules/
+npm-debug.log*
+*.tmp
+*.log
+

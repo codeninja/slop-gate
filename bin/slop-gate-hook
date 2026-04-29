@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+
+const { main } = require("../src/hook");
+
+main().catch((error) => {
+  const message = error && error.stack ? error.stack : String(error);
+  process.stderr.write(`slop-gate hook error: ${message}\n`);
+  process.exit(1);
+});
+

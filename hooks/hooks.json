@@ -1,0 +1,117 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
+            "timeout": 5,
+            "statusMessage": "Recording task intent"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
+            "timeout": 5,
+            "statusMessage": "Checking planned action for intent drift"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
+            "timeout": 5,
+            "statusMessage": "Checking tool result for intent drift"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
+            "timeout": 5,
+            "statusMessage": "Checking tool failure for intent drift"
+          }
+        ]
+      }
+    ],
+    "PostToolBatch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
+            "timeout": 5,
+            "statusMessage": "Checking completed tool batch for intent drift"
+          }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
+            "timeout": 5,
+            "statusMessage": "Checking task creation for intent drift"
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
+            "timeout": 5,
+            "statusMessage": "Checking task completion for intent drift"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
+            "timeout": 5,
+            "statusMessage": "Checking subagent response for intent drift"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
+            "timeout": 5,
+            "statusMessage": "Checking response for intent drift"
+          }
+        ]
+      }
+    ]
+  }
+}
+

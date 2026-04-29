@@ -1,0 +1,19 @@
+{
+  "name": "slop-gate",
+  "version": "0.1.0",
+  "description": "Claude Code hook plugin that detects likely drift from user intent and forces reflection.",
+  "private": true,
+  "license": "MIT",
+  "bin": {
+    "slop-gate-hook": "./bin/slop-gate-hook"
+  },
+  "scripts": {
+    "test": "node --test",
+    "test:e2e": "bash scripts/e2e-claude.sh",
+    "plugin:validate": "claude plugin validate ."
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
+
