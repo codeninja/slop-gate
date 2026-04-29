@@ -47,6 +47,9 @@ function normalizeState(state) {
       : [],
     toolFailures: Array.isArray(state.toolFailures) ? state.toolFailures.slice(-20) : [],
     corrections: Array.isArray(state.corrections) ? state.corrections.slice(-50) : [],
+    dismissedSuppressions: Array.isArray(state.dismissedSuppressions)
+      ? state.dismissedSuppressions.slice(-50)
+      : [],
     stateReadError: state.stateReadError || ""
   };
 }

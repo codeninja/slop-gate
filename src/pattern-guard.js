@@ -138,7 +138,7 @@ function mentionsPatternRepository(command) {
 }
 
 function looksLikeShellMutation(command) {
-  return /\b(?:rm|mv|cp|truncate)\b|\b(?:sed|perl)\s+[^|;&]*-(?:i|pi)\b|(?:^|[^>])>\s*[^&]|\btee\b/i.test(
+  return /\b(?:rm|mv|cp|truncate)\b|\b(?:sed|perl)\s+[^|;&]*-(?:i|pi)\b|(?:^|[^>\d])>\s*[^&]|\btee\b/i.test(
     command
   );
 }

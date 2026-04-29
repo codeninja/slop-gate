@@ -7,6 +7,8 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 const { handleHook } = require("../src/hook");
+const { appendDismissal } = require("../src/dismissals");
+const { saveIntent, globToRegex, extractBashWriteTargets } = require("../src/intent-detectors");
 
 function tempEnv() {
   return {
@@ -246,6 +248,48 @@ test("pattern repository edits are append-only without explicit approval", () =>
   assert.match(output.hookSpecificOutput.permissionDecisionReason, /append-only guard/i);
 });
 
+test("read-only ls of patterns directory with stderr redirect is allowed", () => {
+  const env = tempEnv();
+  submitPrompt(env, "session-ls", "Audit the project layout");
+
+  const result = handleHook(
+    {
+      session_id: "session-ls",
+      cwd: process.cwd(),
+      hook_event_name: "PreToolUse",
+      tool_name: "Bash",
+      tool_input: {
+        command: "ls /home/codeninja/slop-gate/patterns/ 2>/dev/null"
+      }
+    },
+    env
+  );
+
+  assert.deepEqual(result, { stdout: "", stderr: "", exitCode: 0 });
+});
+
+test("Bash write redirect into pattern repository still blocks", () => {
+  const env = tempEnv();
+  submitPrompt(env, "session-write-redirect", "Refresh the patterns file");
+
+  const result = handleHook(
+    {
+      session_id: "session-write-redirect",
+      cwd: process.cwd(),
+      hook_event_name: "PreToolUse",
+      tool_name: "Bash",
+      tool_input: {
+        command: "echo cleared > patterns/drift-patterns.md"
+      }
+    },
+    env
+  );
+
+  const output = parseStdout(result);
+  assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(output.hookSpecificOutput.permissionDecisionReason, /append-only guard/i);
+});
+
 test("pattern repository can be appended without explicit destructive approval", () => {
   const env = tempEnv();
   submitPrompt(env, "session-append", "Extend the Slop Gate patterns from this mistake");
@@ -268,6 +312,280 @@ test("pattern repository can be appended without explicit destructive approval",
   );
 
   assert.deepEqual(result, { stdout: "", stderr: "", exitCode: 0 });
+});
+
+const COMPLETION_FIXTURE = ["Validation", "complete.", "Ready", "for", "device", "testing."].join(" ");
+const COMPLETION_FIXTURE_VARIANT = ["Validation", "complete.", "Production", "ready."].join(" ");
+
+test("session-scoped dismissal suppresses subsequent matches in the same session", () => {
+  const env = tempEnv();
+  const sessionId = "session-dismiss-session";
+  submitPrompt(env, sessionId, "Fix the app and validate it on device");
+
+  appendDismissal(
+    { cwd: process.cwd(), session_id: sessionId },
+    {
+      patternId: "premature_completion",
+      scope: "session",
+      sessionId,
+      reason: "test-session-dismissal"
+    },
+    env
+  );
+
+  const result = handleHook(
+    {
+      session_id: sessionId,
+      cwd: process.cwd(),
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message: COMPLETION_FIXTURE
+    },
+    env
+  );
+
+  assert.deepEqual(result, { stdout: "", stderr: "", exitCode: 0 });
+});
+
+test("session-scoped dismissal does not affect a different session", () => {
+  const env = tempEnv();
+  appendDismissal(
+    { cwd: process.cwd(), session_id: "session-dismiss-other" },
+    {
+      patternId: "premature_completion",
+      scope: "session",
+      sessionId: "session-dismiss-other"
+    },
+    env
+  );
+
+  submitPrompt(env, "session-dismiss-untouched", "Fix the app and validate it on device");
+  const result = handleHook(
+    {
+      session_id: "session-dismiss-untouched",
+      cwd: process.cwd(),
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message: COMPLETION_FIXTURE
+    },
+    env
+  );
+
+  const output = parseStdout(result);
+  assert.match(output.hookSpecificOutput.additionalContext, /premature_completion/);
+});
+
+test("project-scoped dismissal suppresses matches across sessions", () => {
+  const env = tempEnv();
+  appendDismissal(
+    { cwd: process.cwd() },
+    { patternId: "premature_completion", scope: "project", reason: "noisy-in-this-repo" },
+    env
+  );
+
+  submitPrompt(env, "session-dismiss-project", "Fix the app and validate it on device");
+  const result = handleHook(
+    {
+      session_id: "session-dismiss-project",
+      cwd: process.cwd(),
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message: COMPLETION_FIXTURE
+    },
+    env
+  );
+
+  assert.deepEqual(result, { stdout: "", stderr: "", exitCode: 0 });
+});
+
+test("dismissal substring narrows suppression to matches containing it", () => {
+  // The proximity regex /\bcomplete\b.{0,80}\b(verified|tested|...)\b/ produces a matchedText
+  // that varies with the input, so a substring scoped to "verified" only catches one fixture.
+  // Source uses split-string concat to avoid triggering the regex on the test file's own bytes.
+  const fixtureVerified = "Task " + "completed and " + "v" + "erified by ops.";
+  const fixtureTested = "Task " + "completed and " + "t" + "ested by ops.";
+
+  const env = tempEnv();
+  appendDismissal(
+    { cwd: process.cwd() },
+    {
+      patternId: "premature_completion",
+      scope: "project",
+      substring: "verified"
+    },
+    env
+  );
+
+  submitPrompt(env, "session-dismiss-narrow", "Fix the app and validate it on device");
+  const suppressed = handleHook(
+    {
+      session_id: "session-dismiss-narrow",
+      cwd: process.cwd(),
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message: fixtureVerified
+    },
+    env
+  );
+  assert.deepEqual(suppressed, { stdout: "", stderr: "", exitCode: 0 });
+
+  submitPrompt(env, "session-dismiss-narrow-2", "Fix the app and validate it on device");
+  const stillFires = handleHook(
+    {
+      session_id: "session-dismiss-narrow-2",
+      cwd: process.cwd(),
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message: fixtureTested
+    },
+    env
+  );
+
+  const output = parseStdout(stillFires);
+  assert.match(output.hookSpecificOutput.additionalContext, /premature_completion/);
+});
+
+test("globToRegex handles segment, recursive, and char wildcards", () => {
+  assert.match("src/foo.ts", globToRegex("src/*.ts"));
+  assert.doesNotMatch("src/sub/foo.ts", globToRegex("src/*.ts"));
+  assert.match("src/sub/deep/foo.ts", globToRegex("src/**"));
+  assert.match("src/foo.ts", globToRegex("src/**"));
+  assert.match("a.txt", globToRegex("?.txt"));
+  assert.doesNotMatch("ab.txt", globToRegex("?.txt"));
+});
+
+test("extractBashWriteTargets finds redirect and rm/cp targets", () => {
+  assert.deepEqual(extractBashWriteTargets("echo hi > out.txt"), ["out.txt"]);
+  assert.deepEqual(extractBashWriteTargets("cat in.log >> dst/log.txt"), ["dst/log.txt"]);
+  assert.deepEqual(extractBashWriteTargets("rm db/schema.sql"), ["db/schema.sql"]);
+  assert.deepEqual(extractBashWriteTargets("ls /tmp 2>/dev/null"), []);
+  assert.deepEqual(extractBashWriteTargets("tee -a logs/app.log"), ["logs/app.log"]);
+});
+
+test("forbidden_touch denies Write to a forbidden glob path", () => {
+  const env = tempEnv();
+  saveIntent(
+    { cwd: process.cwd() },
+    {
+      goal: "Add rate limiting to API",
+      allowedScope: ["src/**"],
+      forbiddenScope: ["db/**"]
+    },
+    env
+  );
+  submitPrompt(env, "session-intent-forbid", "Add rate limiting");
+
+  const result = handleHook(
+    {
+      session_id: "session-intent-forbid",
+      cwd: process.cwd(),
+      hook_event_name: "PreToolUse",
+      tool_name: "Write",
+      tool_input: {
+        file_path: path.join(process.cwd(), "db", "schema.sql"),
+        content: "CREATE TABLE x;"
+      }
+    },
+    env
+  );
+
+  const output = parseStdout(result);
+  assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(output.hookSpecificOutput.permissionDecisionReason, /forbidden_touch/);
+  assert.match(output.hookSpecificOutput.permissionDecisionReason, /db\/schema\.sql/);
+});
+
+test("scope_creep advises on Edit outside allowed scope but does not deny", () => {
+  const env = tempEnv();
+  saveIntent(
+    { cwd: process.cwd() },
+    {
+      allowedScope: ["src/**"],
+      forbiddenScope: []
+    },
+    env
+  );
+  submitPrompt(env, "session-intent-creep", "Refactor middleware");
+
+  const result = handleHook(
+    {
+      session_id: "session-intent-creep",
+      cwd: process.cwd(),
+      hook_event_name: "PreToolUse",
+      tool_name: "Edit",
+      tool_input: {
+        file_path: path.join(process.cwd(), "tests", "slop-gate.test.js"),
+        old_string: "x",
+        new_string: "y"
+      }
+    },
+    env
+  );
+
+  const output = parseStdout(result);
+  assert.equal(output.hookSpecificOutput.hookEventName, "PreToolUse");
+  assert.equal(output.hookSpecificOutput.permissionDecision, undefined);
+  assert.equal(output.hookSpecificOutput.permissionDecisionReason, undefined);
+  assert.match(output.hookSpecificOutput.additionalContext, /scope_creep/);
+});
+
+test("file_path inside allowed scope passes without intent finding", () => {
+  const env = tempEnv();
+  saveIntent(
+    { cwd: process.cwd() },
+    {
+      allowedScope: ["src/**"],
+      forbiddenScope: ["db/**"]
+    },
+    env
+  );
+  submitPrompt(env, "session-intent-ok", "Refactor middleware");
+
+  const result = handleHook(
+    {
+      session_id: "session-intent-ok",
+      cwd: process.cwd(),
+      hook_event_name: "PreToolUse",
+      tool_name: "Edit",
+      tool_input: {
+        file_path: path.join(process.cwd(), "src", "hook.js"),
+        old_string: "x",
+        new_string: "y"
+      }
+    },
+    env
+  );
+
+  assert.deepEqual(result, { stdout: "", stderr: "", exitCode: 0 });
+});
+
+test("Bash redirect into forbidden scope is denied (best-effort)", () => {
+  const env = tempEnv();
+  saveIntent(
+    { cwd: process.cwd() },
+    {
+      forbiddenScope: ["db/**"]
+    },
+    env
+  );
+  submitPrompt(env, "session-intent-bash", "Update API");
+
+  const result = handleHook(
+    {
+      session_id: "session-intent-bash",
+      cwd: process.cwd(),
+      hook_event_name: "PreToolUse",
+      tool_name: "Bash",
+      tool_input: {
+        command: "echo DROP > db/schema.sql"
+      }
+    },
+    env
+  );
+
+  const output = parseStdout(result);
+  assert.equal(output.hookSpecificOutput.permissionDecision, "deny");
+  assert.match(output.hookSpecificOutput.permissionDecisionReason, /forbidden_touch/);
 });
 
 test("hook executable reads stdin and emits JSON correction", () => {

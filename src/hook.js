@@ -4,6 +4,8 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const { detectPatterns, isValidationCommand, normalizeText } = require("./patterns");
 const { checkPatternRepositoryMutation, isPatternRepositoryToolEvent } = require("./pattern-guard");
+const { findMatchingDismissal, loadDismissals } = require("./dismissals");
+const { detectIntentFindings } = require("./intent-detectors");
 const { loadState, saveState } = require("./state");
 const { eventText, stringify, truncate } = require("./text");
 
@@ -36,10 +38,29 @@ function handleHook(input, env = process.env) {
     return allow();
   }
 
-  const findings = detectPatterns(eventText(input), state, { env, cwd: input.cwd });
+  const findings = [
+    ...detectIntentFindings(input, env),
+    ...detectPatterns(eventText(input), state, { env, cwd: input.cwd })
+  ];
   const finding = chooseFinding(findings);
 
   if (!finding) {
+    saveState(input, state, env);
+    return allow();
+  }
+
+  const dismissal = findMatchingDismissal(
+    finding,
+    loadDismissals(input, env),
+    input.session_id || ""
+  );
+  if (dismissal) {
+    state.dismissedSuppressions.push({
+      at: new Date().toISOString(),
+      patternId: finding.patternId,
+      scope: dismissal.scope,
+      substring: dismissal.substring || null
+    });
     saveState(input, state, env);
     return allow();
   }
@@ -185,10 +206,10 @@ function buildCorrectionMessage({ input, state, finding }) {
     "",
     "Before continuing, self-reflect and respond to this correction:",
     "1. Restate the user's actual objective and constraints.",
-    "2. Name the assumption or drift that triggered this hook.",
+    "2. Explain the assumption or drift that triggered this hook.",
     "3. Separate verified evidence from guesses, shortcuts, and untested claims.",
     "4. Decide whether to continue, verify, revise the plan, or ask one focused question.",
-    "5. If you continue, take the next concrete step that aligns with the original task."
+    "5. If you decide to continue, you must justify your decision, then take the next concrete step that aligns with the original task."
   ]
     .filter(Boolean)
     .join("\n");
@@ -217,7 +238,7 @@ function summarizeEvidence(state) {
 function respondForEvent(eventName, correction, finding) {
   const summary = buildSummary(eventName, finding);
 
-  if (eventName === "PreToolUse") {
+  if (eventName === "PreToolUse" && !(finding && finding.advisory)) {
     return json({
       systemMessage: summary,
       hookSpecificOutput: {
