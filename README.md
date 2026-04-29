@@ -23,6 +23,17 @@ Claude Code hooks do not expose hidden chain-of-thought; Slop Gate only sees the
 event payloads that Claude Code provides.
 
 
+## Detecting Intent
+Slop Gate will automatially detect your intent as you message and interact with Claude. 
+
+To view the current intent, use the slash command:
+```
+/slop-gate:intent show
+```
+
+If Intent is not explicitly set, it is inferred. 
+
+
 ## Declaring Intent
 
 Slop Gate can also detect drift against an explicit, declarative intent for the
@@ -67,6 +78,31 @@ suppress matches that fit the dismissal record. Each record names a
 suppressed, and a scope (`session` by default, `--project` to persist across
 sessions). Records live in `<state-dir>/dismissals.jsonl`. To undo a
 dismissal, delete its line from the file by hand.
+
+
+## Flagging Missed Drift In-Session
+
+When Claude drifts inside the current conversation and the hook missed it,
+use `/slop-gate:slop` to flag the offense, propose a reusable pattern
+update, and get back on track without leaving the session:
+
+```text
+/slop-gate:slop you keep editing the migration files after I told you they're out of scope
+```
+
+The command restates the original intent, names the root cause as an
+abstract drift shape, and drafts a pattern diff — either a new
+`## Pattern: <id>` section or an `### Extensions` block on an existing
+pattern. Nothing is written until you confirm: answer `y` to apply, `edit`
+to revise the proposal, or `skip` to keep the correction local without
+touching the repository. On `y`, the `pattern-curator` agent performs the
+append-only write and `npm test` runs to confirm the repository still
+parses. The command then continues the original task with the corrected
+direction.
+
+`/slop-gate:slop` operates only on the current conversation. To learn
+patterns from prior Claude Code session histories, use
+`/slop-gate:audit-history` and `/slop-gate:ingest-history` instead.
 
 
 ## Pattern Memory Policy
@@ -198,7 +234,7 @@ SLOP_GATE_E2E_KEEP=1 npm run test:e2e
   for permanent installation.
 - `commands/` provides `/slop-gate:*` slash commands for first-time setup,
   history auditing, pattern ingestion, intent declaration, false-positive
-  dismissal, and verification.
+  dismissal, in-session drift flagging (`/slop-gate:slop`), and verification.
 - `hooks/hooks.json` registers the hook on relevant Claude Code lifecycle
   events.
 - `agents/pattern-curator.md` lets Claude reflect on mistakes and append or
