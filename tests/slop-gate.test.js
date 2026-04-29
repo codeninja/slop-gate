@@ -51,6 +51,10 @@ test("Stop surfaces advisory reflection for premature completion", () => {
 
   const output = parseStdout(result);
   assert.equal(output.hookSpecificOutput.hookEventName, "Stop");
+  assert.match(output.systemMessage, /^⚠️  Slop Gate \| pattern=premature_completion \| severity=high \| event=Stop$/m);
+  assert.match(output.systemMessage, /\n   Caught:\s+"/);
+  assert.match(output.systemMessage, /\n   Violation:\s+\S/);
+  assert.match(output.systemMessage, /\n   Mitigation:\s+\S/);
   assert.match(output.hookSpecificOutput.additionalContext, /Original task: "Fix the app and validate it on device"/);
   assert.match(output.hookSpecificOutput.additionalContext, /Assumption being made:/);
   assert.match(output.hookSpecificOutput.additionalContext, /Before continuing, self-reflect/);

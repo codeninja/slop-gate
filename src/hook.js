@@ -28,7 +28,7 @@ function handleHook(input, env = process.env) {
   if (patternRepoViolation) {
     const correction = buildCorrectionMessage({ input, state, finding: patternRepoViolation });
     saveState(input, state, env);
-    return respondForEvent(eventName, correction);
+    return respondForEvent(eventName, correction, patternRepoViolation);
   }
 
   if (isPatternRepositoryToolEvent(input)) {
@@ -61,7 +61,7 @@ function handleHook(input, env = process.env) {
   });
   saveState(input, state, env);
 
-  return respondForEvent(eventName, correction);
+  return respondForEvent(eventName, correction, finding);
 }
 
 function chooseFinding(findings) {
@@ -214,9 +214,12 @@ function summarizeEvidence(state) {
   return parts.join("\n");
 }
 
-function respondForEvent(eventName, correction) {
+function respondForEvent(eventName, correction, finding) {
+  const summary = buildSummary(eventName, finding);
+
   if (eventName === "PreToolUse") {
     return json({
+      systemMessage: summary,
       hookSpecificOutput: {
         hookEventName: "PreToolUse",
         permissionDecision: "deny",
@@ -226,11 +229,35 @@ function respondForEvent(eventName, correction) {
   }
 
   return json({
+    systemMessage: summary,
     hookSpecificOutput: {
       hookEventName: eventName,
       additionalContext: correction
     }
   });
+}
+
+function buildSummary(eventName, finding) {
+  const headerParts = ["⚠️  Slop Gate"];
+  if (finding && finding.patternId) {
+    headerParts.push(`pattern=${finding.patternId}`);
+  }
+  if (finding && finding.severity) {
+    headerParts.push(`severity=${finding.severity}`);
+  }
+  headerParts.push(`event=${eventName}`);
+
+  const lines = [headerParts.join(" | ")];
+  if (finding && finding.matchedText) {
+    lines.push(`   Caught:     "${truncate(finding.matchedText, 240)}"`);
+  }
+  if (finding && finding.assumption) {
+    lines.push(`   Violation:  ${finding.assumption}`);
+  }
+  if (finding && finding.challenge) {
+    lines.push(`   Mitigation: ${finding.challenge}`);
+  }
+  return lines.join("\n");
 }
 
 function hasRecentCorrection(state, key) {
