@@ -96,6 +96,12 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
             "timeout": 5,
             "statusMessage": "Checking subagent response for intent drift"
+          },
+          {
+            "type": "prompt",
+            "prompt": "Slop Gate semantic subagent-stop condition. Return {\"ok\": true} if stop_hook_active is true or if the final message is not making a completion, validation, readiness, or user-as-tester claim. Return {\"ok\": false, \"reason\": \"...\"} only when that claim lacks concrete evidence in the final message, such as commands, tests, tool results, inspected files, or an explicit blocker. Hook event JSON: $ARGUMENTS",
+            "timeout": 30,
+            "statusMessage": "Semantically judging subagent stop"
           }
         ]
       }
@@ -108,10 +114,15 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/slop-gate-hook",
             "timeout": 5,
             "statusMessage": "Checking response for intent drift"
+          },
+          {
+            "type": "prompt",
+            "prompt": "Slop Gate semantic stop condition. Return {\"ok\": true} if stop_hook_active is true or if the final message is not making a completion, validation, readiness, or user-as-tester claim. Return {\"ok\": false, \"reason\": \"...\"} only when that claim lacks concrete evidence in the final message, such as commands, tests, tool results, inspected files, or an explicit blocker. Hook event JSON: $ARGUMENTS",
+            "timeout": 30,
+            "statusMessage": "Semantically judging stop"
           }
         ]
       }
     ]
   }
 }
-

@@ -1,9 +1,12 @@
 {
   "name": "slop-gate",
   "description": "Claude Code hook plugin that detects likely drift from user intent and forces reflection before continuing.",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "author": {
     "name": "codeninja"
   },
-  "license": "MIT"
+  "homepage": "https://github.com/codeninja/slop-gate",
+  "repository": "https://github.com/codeninja/slop-gate",
+  "license": "MIT",
+  "keywords": ["claude-code", "hooks", "intent-drift", "validation"]
 }

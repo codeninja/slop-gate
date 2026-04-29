@@ -298,3 +298,55 @@ test("hook executable reads stdin and emits JSON correction", () => {
   assert.equal(output.decision, "block");
   assert.match(output.reason, /premature_completion/);
 });
+
+test("history audit extracts candidate drift episodes from Claude transcripts", () => {
+  const transcriptDir = fs.mkdtempSync(path.join(os.tmpdir(), "slop-gate-history-"));
+  const transcriptPath = path.join(transcriptDir, "session.jsonl");
+  const outputPath = path.join(transcriptDir, "audit.md");
+  fs.writeFileSync(
+    transcriptPath,
+    [
+      {
+        type: "user",
+        session_id: "session-history",
+        message: {
+          role: "user",
+          content: [{ type: "text", text: "Fix the app and validate it on device" }]
+        }
+      },
+      {
+        type: "assistant",
+        session_id: "session-history",
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "Validation complete. Ready for device testing." }]
+        }
+      }
+    ]
+      .map((line) => JSON.stringify(line))
+      .join("\n")
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(process.cwd(), "scripts", "audit-claude-history.js"),
+      "--root",
+      transcriptDir,
+      "--out",
+      outputPath,
+      "--limit",
+      "10"
+    ],
+    { encoding: "utf8" }
+  );
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, "");
+  assert.match(result.stdout, /audit\.md/);
+
+  const output = fs.readFileSync(outputPath, "utf8");
+  assert.match(output, /premature_completion/);
+  assert.match(output, /Fix the app and validate it on device/);
+  assert.match(output, /Validation complete\. Ready for device testing\./);
+});
