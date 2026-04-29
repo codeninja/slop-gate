@@ -1,6 +1,6 @@
 {
   "name": "slop-gate",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Claude Code hook plugin that detects likely drift from user intent and forces reflection.",
   "private": true,
   "license": "MIT",
