@@ -1,5 +1,7 @@
 # Slop Gate
 
+![Slop Gate](docs/slop-gate.png)
+
 Slop Gate is a Claude Code plugin that adds lifecycle hooks to surface
 candidate intent drift. When a drift pattern is found, the hook injects an
 advisory reflection request as additional context on the current event so
