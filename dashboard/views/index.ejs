@@ -1,21 +1,111 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Slop Gate Evaluation</title>
-</head>
-<body>
-    <h1>Slop Gate Catch Scenarios</h1>
-    <ul>
-        <% patterns.forEach(function(pattern) { %>
-            <li><%= pattern %></li>
-        <% }); %>
-    </ul>
-    
-    <h2>Test Pattern</h2>
-    <a href="/rules">Manage Rules</a> | <a href="/metrics">View Metrics</a>
-    <form action="/run" method="POST">
-        <textarea name="claudeResponse" rows="10" cols="50" placeholder="Paste Claude response here..."></textarea><br>
-        <button type="submit">Run Slop Gate</button>
-    </form>
-</body>
-</html>
+<%- include('partials/head', { title }) %>
+<%- include('partials/nav', { currentPage }) %>
+
+<h1 class="page-title">Evaluate assistant output</h1>
+<p class="lede">
+  Paste Claude’s reply (or any assistant text). The dashboard runs the same signal regexes as
+  <span class="badge">patterns/drift-patterns.md</span> and marks each one that fires.
+  Green checks mean that exact regex matched your paste—useful for smoke-testing drift catches before wiring the hook.
+</p>
+
+<% if (summary) { %>
+  <div class="run-summary" role="status">
+    <strong><%= summary.matchedSignals %></strong> signal<%= summary.matchedSignals === 1 ? '' : 's' %> matched
+    · <strong><%= summary.matchedPatterns %></strong> pattern<%= summary.matchedPatterns === 1 ? '' : 's' %> with at least one hit
+    · <span class="run-summary-muted"><%= summary.totalPatterns %> scenarios loaded</span>
+  </div>
+<% } %>
+
+<div class="grid grid-eval">
+  <section class="panel scenarios-panel" aria-labelledby="scenarios-heading">
+    <div class="panel-header">
+      <h2 id="scenarios-heading">Scenarios &amp; signal regexes</h2>
+    </div>
+    <div class="panel-body panel-body--flush">
+      <% if (!scenarios.length) { %>
+        <p class="pattern-empty">No active patterns found. Check <code>patterns/drift-patterns.md</code> or Rules.</p>
+      <% } else { %>
+        <div class="scenario-scroll">
+          <% scenarios.forEach(function (scenario) { %>
+            <details class="scenario-card<%= scenario.patternMatched ? ' scenario-card--hit' : '' %>"<% if (scenario.patternMatched) { %> open<% } %>>
+              <summary class="scenario-summary">
+                <span class="scenario-title-group">
+                  <span class="severity severity--<%= scenario.severity %>"><%= scenario.severity %></span>
+                  <span class="scenario-title"><%= scenario.title %></span>
+                  <% if (scenario.patternMatched) { %>
+                    <span class="scenario-hit-pill" title="At least one signal matched">Hit</span>
+                  <% } %>
+                </span>
+                <code class="scenario-id"><%= scenario.id %></code>
+              </summary>
+              <div class="scenario-body">
+                <% if (scenario.skippedDueToValidation) { %>
+                  <p class="scenario-skip-note">Signals not evaluated for this pattern (validation evidence present in hook session state).</p>
+                <% } %>
+                <% if (scenario.examples && scenario.examples.length) { %>
+                  <div class="scenario-examples">
+                    <h3 class="scenario-subheading">Example phrases</h3>
+                    <p class="scenario-examples-lede">Samples from the pattern doc (for calibration—not evaluated unless your paste contains them).</p>
+                    <ul class="example-list">
+                      <% scenario.examples.forEach(function (ex) { %>
+                        <li><code class="example-snippet"><%= ex %></code></li>
+                      <% }); %>
+                    </ul>
+                  </div>
+                <% } %>
+                <h3 class="scenario-subheading scenario-subheading--signals">Signal regexes</h3>
+                <ul class="signal-list">
+                  <% scenario.signals.forEach(function (sig) { %>
+                    <li class="signal-row<%= sig.matched ? ' signal-row--matched' : '' %><%= sig.skipped ? ' signal-row--skipped' : '' %>">
+                      <span class="signal-check" aria-hidden="true">
+                        <% if (sig.skipped) { %>
+                          <span class="signal-dash">—</span>
+                        <% } else if (sig.matched) { %>
+                          <span class="signal-checkmark" title="Matched">✓</span>
+                        <% } else { %>
+                          <span class="signal-empty"></span>
+                        <% } %>
+                      </span>
+                      <div class="signal-main">
+                        <code class="signal-regex" title="<%= sig.display %>"><%= sig.display %></code>
+                        <% if (sig.matched && sig.matchedText) { %>
+                          <div class="signal-snippet">Matched: “<%= sig.matchedText %>”</div>
+                        <% } %>
+                      </div>
+                    </li>
+                  <% }); %>
+                </ul>
+              </div>
+            </details>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="paste-heading">
+    <div class="panel-header">
+      <h2 id="paste-heading">Paste &amp; run</h2>
+    </div>
+    <div class="panel-body">
+      <form action="/run" method="POST">
+        <label class="field-label" for="claudeResponse">Assistant output</label>
+        <textarea
+          id="claudeResponse"
+          class="input input--paste"
+          name="claudeResponse"
+          rows="16"
+          placeholder="Paste the assistant message or transcript you want to check…"
+        ><%= typeof claudeResponse !== 'undefined' ? claudeResponse : '' %></textarea>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Run signal check</button>
+        </div>
+      </form>
+      <% if (!summary && (!claudeResponse || !String(claudeResponse).trim())) { %>
+        <p class="paste-hint">Run the check after pasting Claude output. Command: <code class="inline-code">npm run dashboard</code> · smoke test: <code class="inline-code">npm run dashboard:smoke</code></p>
+      <% } %>
+    </div>
+  </section>
+</div>
+
+<%- include('partials/footer') %>

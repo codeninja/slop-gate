@@ -1,14 +1,24 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Slop Gate Rules Management</title>
-</head>
-<body>
-    <h1>Rules Management</h1>
-    <a href="/">Back to Evaluation</a>
+<%- include('partials/head', { title }) %>
+<%- include('partials/nav', { currentPage }) %>
+
+<h1 class="page-title">Rules</h1>
+<p class="lede">Edit drift patterns as Markdown. Save writes to <code style="font-family: var(--font-mono); font-size: 0.9em;">patterns/drift-patterns.md</code> in the repo.</p>
+
+<section class="panel" aria-labelledby="rules-editor-heading">
+  <div class="panel-header">
+    <h2 id="rules-editor-heading">Pattern definitions</h2>
+  </div>
+  <div class="panel-body">
     <form action="/rules" method="POST">
-        <textarea name="patternContent" rows="20" cols="80"><%= patternContent %></textarea><br>
-        <button type="submit">Save Patterns</button>
+      <label class="field-label" for="patternContent">patterns/drift-patterns.md</label>
+      <textarea id="patternContent" class="input rules-editor" name="patternContent" spellcheck="false"><%= patternContent %></textarea>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save patterns</button>
+        <a class="btn btn-ghost" href="/">Back to evaluate</a>
+      </div>
     </form>
-</body>
-</html>
+    <p class="save-hint">After saving, reload Evaluate to refresh the scenario list.</p>
+  </div>
+</section>
+
+<%- include('partials/footer') %>

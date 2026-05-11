@@ -17,7 +17,7 @@ Challenge: A missing command or skill does not automatically authorize skipping 
 ### Signals
 
 - `/\b(?:\/[\w:-]+|skill|command|tool|process|workflow)\s+(?:isn'?t|is not|wasn'?t|was not)\s+(?:an\s+)?(?:available|found|configured|enabled|installed).*?\b(?:but|so)\s+i\s+(?:can|will|am going to)\b.*?\b(?:directly|manually)\b/is`
-- `/\blet me just\b.{0,120}\b(?:directly|create|write|do|make)\b/is`
+- `/\blet me just\b/is`
 - `/\b(?:create|write|make)\s+(?:this\s+)?(?:specification|spec|file|answer|implementation)\s+directly\b/is`
 
 ### Examples
