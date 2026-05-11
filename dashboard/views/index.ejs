@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Slop Gate Evaluation</title>
+</head>
+<body>
+    <h1>Slop Gate Catch Scenarios</h1>
+    <ul>
+        <% patterns.forEach(function(pattern) { %>
+            <li><%= pattern %></li>
+        <% }); %>
+    </ul>
+    
+    <h2>Test Pattern</h2>
+    <a href="/rules">Manage Rules</a> | <a href="/metrics">View Metrics</a>
+    <form action="/run" method="POST">
+        <textarea name="claudeResponse" rows="10" cols="50" placeholder="Paste Claude response here..."></textarea><br>
+        <button type="submit">Run Slop Gate</button>
+    </form>
+</body>
+</html>
