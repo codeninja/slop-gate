@@ -16,7 +16,7 @@ Process:
    supplied `--scope project` or `--scope local`.
 2. Determine the plugin source root:
    - If the first argument is a path, use it.
-   - Else if the current directory contains `.claude-plugin/marketplace.json`,
+   - Else if the current directory contains `marketplace.json`,
      use the current directory.
    - Else inspect `claude plugin list --json` and `claude plugin marketplace list --json`
      to determine whether Slop Gate is already installed.

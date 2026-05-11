@@ -230,8 +230,8 @@ SLOP_GATE_E2E_KEEP=1 npm run test:e2e
 ## Plugin Layout
 
 - `.claude-plugin/plugin.json` declares the Claude Code plugin.
-- `.claude-plugin/marketplace.json` declares the local marketplace entry used
-  for permanent installation.
+- `marketplace.json` declares the local/public marketplace entry used for
+  permanent installation.
 - `commands/` provides `/slop-gate:*` slash commands for first-time setup,
   history auditing, pattern ingestion, intent declaration, false-positive
   dismissal, in-session drift flagging (`/slop-gate:slop`), and verification.
