@@ -38,6 +38,7 @@ function parsePatternMarkdown(markdown) {
     const body = section.slice(firstNewline + 1);
     const fields = parseFields(body);
     const regexes = parseSignalRegexes(body);
+    const examples = parseExampleStrings(body);
 
     if (!id || fields.status === "disabled" || regexes.length === 0) {
       continue;
@@ -50,7 +51,8 @@ function parsePatternMarkdown(markdown) {
       requiresNoValidationEvidence: fields["requires no validation evidence"] === "true",
       assumption: fields.assumption || `The response appears to match ${id}.`,
       challenge: fields.challenge || "Reflect before continuing.",
-      regexes
+      regexes,
+      examples
     });
   }
 
@@ -96,6 +98,31 @@ function parseSignalRegexes(body) {
   }
 
   return regexes;
+}
+
+function parseExampleStrings(body) {
+  const examples = [];
+  let inExamples = false;
+
+  for (const line of body.split(/\r?\n/)) {
+    if (/^###\s+Examples\s*$/i.test(line.trim())) {
+      inExamples = true;
+      continue;
+    }
+    if (inExamples && /^###\s+/.test(line.trim())) {
+      break;
+    }
+    if (!inExamples) {
+      continue;
+    }
+
+    const match = /^\s*-\s+`([^`]*)`\s*$/.exec(line);
+    if (match) {
+      examples.push(match[1]);
+    }
+  }
+
+  return examples;
 }
 
 function parseRegexLiteral(value) {
@@ -151,6 +178,7 @@ module.exports = {
   defaultPatternFile,
   loadMarkdownPatterns,
   parsePatternMarkdown,
+  parseExampleStrings,
   parseRegexLiteral
 };
 
