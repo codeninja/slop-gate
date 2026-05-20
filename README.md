@@ -23,6 +23,13 @@ Claude Code hooks do not expose hidden chain-of-thought; Slop Gate only sees the
 event payloads that Claude Code provides.
 
 
+## Recent Changes
+
+- 2026-05-11 — [Top-level marketplace manifest](docs/changelog/2026-05-11-top-level-marketplace-manifest.md) — enables `claude plugin marketplace add codeninja/slop-gate` from the public repo.
+
+Older entries live under [`docs/changelog/`](docs/changelog/).
+
+
 ## Detecting Intent
 Slop Gate will automatially detect your intent as you message and interact with Claude. 
 
