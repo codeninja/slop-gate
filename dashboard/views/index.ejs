@@ -3,23 +3,108 @@
 
 <h1 class="page-title">Evaluate assistant output</h1>
 <p class="lede">
-  Paste Claude’s reply (or any assistant text). The dashboard runs the same signal regexes as
-  <span class="badge">patterns/drift-patterns.md</span> and marks each one that fires.
-  Green checks mean that exact regex matched your paste—useful for smoke-testing drift catches before wiring the hook.
+  Audit LLM responses against local safety and alignment heuristics. Paste your assistant transcript below to evaluate real-time drift triggers, or select a pre-calibrated simulator preset to watch the auditor flag violations instantly.
 </p>
 
-<% if (summary) { %>
-  <div class="run-summary" role="status">
-    <strong><%= summary.matchedSignals %></strong> signal<%= summary.matchedSignals === 1 ? '' : 's' %> matched
-    · <strong><%= summary.matchedPatterns %></strong> pattern<%= summary.matchedPatterns === 1 ? '' : 's' %> with at least one hit
-    · <span class="run-summary-muted"><%= summary.totalPatterns %> scenarios loaded</span>
-  </div>
-<% } %>
+<!-- Interactive Quick-Test Presets Launcher -->
+<h3 class="field-label" style="margin-bottom: 1rem;">Select a Drift Scenario Preset to Simulate</h3>
+<div class="presets-grid">
+  <% presets.forEach(function (preset) { %>
+    <button class="preset-card" onclick="loadPreset(`<%= preset.text.replace(/`/g, '\\`').replace(/'/g, "\\'") %>`)">
+      <div class="preset-badge"><%= preset.id.replace('_', ' ') %></div>
+      <div class="preset-title"><%= preset.label %></div>
+      <div class="preset-desc"><%= preset.desc %></div>
+    </button>
+  <% }); %>
+</div>
 
+<!-- Dynamic Analytics Summary Cards -->
+<div class="summary-container" role="status">
+  <div class="summary-card">
+    <div class="summary-icon">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    </div>
+    <div class="summary-details">
+      <span class="summary-num"><%= scenarios.length %></span>
+      <span class="summary-label">Scenarios Loaded</span>
+    </div>
+  </div>
+
+  <div class="summary-card <%= (summary && summary.matchedPatterns > 0) ? 'alert-state' : '' %>">
+    <div class="summary-icon">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    </div>
+    <div class="summary-details">
+      <span class="summary-num"><%= summary ? summary.matchedPatterns : 0 %></span>
+      <span class="summary-label">Drift Patterns Triggered</span>
+    </div>
+  </div>
+
+  <div class="summary-card <%= (summary && summary.matchedSignals > 0) ? 'alert-state' : '' %>">
+    <div class="summary-icon">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    </div>
+    <div class="summary-details">
+      <span class="summary-num"><%= summary ? summary.matchedSignals : 0 %></span>
+      <span class="summary-label">Signal Regex Matches</span>
+    </div>
+  </div>
+</div>
+
+<!-- Two-Column Evaluator Playground & Auditor -->
 <div class="grid grid-eval">
+  
+  <!-- Right Column: Interactive Playground Panel (First for logical developer flow) -->
+  <section class="panel" aria-labelledby="paste-heading">
+    <div class="panel-header">
+      <h2 id="paste-heading">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="margin-right: 4px; color: hsl(var(--accent));">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        Playground Sandbox
+      </h2>
+    </div>
+    <div class="panel-body">
+      <form id="evalForm" action="/run" method="POST">
+        <label class="field-label" for="claudeResponse">Paste Assistant Transcript</label>
+        <textarea
+          id="claudeResponse"
+          class="input input--paste"
+          name="claudeResponse"
+          rows="18"
+          placeholder="Paste Claude's message or output here, or click a preset above..."
+        ><%= typeof claudeResponse !== 'undefined' ? claudeResponse : '' %></textarea>
+        
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Run Auditing Scan</button>
+          <% if (claudeResponse) { %>
+            <a href="/" class="btn btn-ghost">Reset Sandbox</a>
+          <% } %>
+        </div>
+      </form>
+      <% if (!summary && (!claudeResponse || !String(claudeResponse).trim())) { %>
+        <p class="paste-hint">
+          Ready to verify. Run the local dashboard with <code class="inline-code">npm run dashboard</code> or execute the test suite with <code class="inline-code">npm run dashboard:smoke</code>.
+        </p>
+      <% } %>
+    </div>
+  </section>
+
+  <!-- Left Column: Auditor Results List -->
   <section class="panel scenarios-panel" aria-labelledby="scenarios-heading">
     <div class="panel-header">
-      <h2 id="scenarios-heading">Scenarios &amp; signal regexes</h2>
+      <h2 id="scenarios-heading">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="margin-right: 4px; color: hsl(var(--accent));">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+        Active Drift Signatures
+      </h2>
     </div>
     <div class="panel-body panel-body--flush">
       <% if (!scenarios.length) { %>
@@ -33,27 +118,27 @@
                   <span class="severity severity--<%= scenario.severity %>"><%= scenario.severity %></span>
                   <span class="scenario-title"><%= scenario.title %></span>
                   <% if (scenario.patternMatched) { %>
-                    <span class="scenario-hit-pill" title="At least one signal matched">Hit</span>
+                    <span class="scenario-hit-pill" title="At least one signal matched">Drift Hit</span>
                   <% } %>
                 </span>
                 <code class="scenario-id"><%= scenario.id %></code>
               </summary>
               <div class="scenario-body">
                 <% if (scenario.skippedDueToValidation) { %>
-                  <p class="scenario-skip-note">Signals not evaluated for this pattern (validation evidence present in hook session state).</p>
+                  <p class="scenario-skip-note">Audit Bypassed: Validation evidence has been recorded in the hook session state.</p>
                 <% } %>
                 <% if (scenario.examples && scenario.examples.length) { %>
                   <div class="scenario-examples">
-                    <h3 class="scenario-subheading">Example phrases</h3>
-                    <p class="scenario-examples-lede">Samples from the pattern doc (for calibration—not evaluated unless your paste contains them).</p>
-                    <ul class="example-list">
+                    <h3 class="scenario-subheading">Example triggers</h3>
+                    <p class="scenario-examples-lede">Standard evaluation samples from drift rules:</p>
+                    <div class="example-list">
                       <% scenario.examples.forEach(function (ex) { %>
-                        <li><code class="example-snippet"><%= ex %></code></li>
+                        <code class="example-snippet"><%= ex %></code>
                       <% }); %>
-                    </ul>
+                    </div>
                   </div>
                 <% } %>
-                <h3 class="scenario-subheading scenario-subheading--signals">Signal regexes</h3>
+                <h3 class="scenario-subheading scenario-subheading--signals" style="margin-top: 0.5rem;">Audit Rules (Regex)</h3>
                 <ul class="signal-list">
                   <% scenario.signals.forEach(function (sig) { %>
                     <li class="signal-row<%= sig.matched ? ' signal-row--matched' : '' %><%= sig.skipped ? ' signal-row--skipped' : '' %>">
@@ -61,7 +146,7 @@
                         <% if (sig.skipped) { %>
                           <span class="signal-dash">—</span>
                         <% } else if (sig.matched) { %>
-                          <span class="signal-checkmark" title="Matched">✓</span>
+                          <span class="signal-checkmark">✓</span>
                         <% } else { %>
                           <span class="signal-empty"></span>
                         <% } %>
@@ -82,30 +167,19 @@
       <% } %>
     </div>
   </section>
-
-  <section class="panel" aria-labelledby="paste-heading">
-    <div class="panel-header">
-      <h2 id="paste-heading">Paste &amp; run</h2>
-    </div>
-    <div class="panel-body">
-      <form action="/run" method="POST">
-        <label class="field-label" for="claudeResponse">Assistant output</label>
-        <textarea
-          id="claudeResponse"
-          class="input input--paste"
-          name="claudeResponse"
-          rows="16"
-          placeholder="Paste the assistant message or transcript you want to check…"
-        ><%= typeof claudeResponse !== 'undefined' ? claudeResponse : '' %></textarea>
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary">Run signal check</button>
-        </div>
-      </form>
-      <% if (!summary && (!claudeResponse || !String(claudeResponse).trim())) { %>
-        <p class="paste-hint">Run the check after pasting Claude output. Command: <code class="inline-code">npm run dashboard</code> · smoke test: <code class="inline-code">npm run dashboard:smoke</code></p>
-      <% } %>
-    </div>
-  </section>
+  
 </div>
+
+<!-- Client-side Interactive Preset Script -->
+<script>
+  function loadPreset(text) {
+      const textarea = document.getElementById('claudeResponse');
+      if (textarea) {
+          textarea.value = text;
+          // Automatically trigger the Scan evaluation
+          document.getElementById('evalForm').submit();
+      }
+  }
+</script>
 
 <%- include('partials/footer') %>
