@@ -1,18 +1,84 @@
 <%- include('partials/head', { title }) %>
 <%- include('partials/nav', { currentPage }) %>
 
-<h1 class="page-title">Metrics &amp; drift abstracts</h1>
-<p class="lede">Read-only view of <code style="font-family: var(--font-mono); font-size: 0.9em;">docs/drift-abstracts.md</code>. Scroll inside the panel for long files.</p>
+<h1 class="page-title">Metrics &amp; Drift Abstracts</h1>
+<p class="lede">
+  Explore mapped drift families and behavioral signatures. These abstractions are derived from empirical session reviews and serve as the structural framework for local auditing rules.
+</p>
 
-<section class="panel" aria-labelledby="metrics-heading">
-  <div class="panel-header">
-    <h2 id="metrics-heading">drift-abstracts.md</h2>
-  </div>
-  <div class="panel-body">
-    <div class="metrics-wrap article-body">
-      <pre class="metrics-pre"><%= content %></pre>
+<!-- Parsed Abstract Intro Banner -->
+<% if (typeof parsedIntro !== 'undefined' && parsedIntro) { %>
+  <div class="abstracts-intro-box">
+    <div style="display: flex; gap: 1rem; align-items: flex-start;">
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: hsl(var(--accent)); flex-shrink: 0; margin-top: 2px;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      </svg>
+      <div>
+        <strong style="color: hsl(var(--text-main));">Pattern Framework Architecture:</strong>
+        <span style="font-size: 0.95rem; display: block; margin-top: 0.25rem;"><%= parsedIntro %></span>
+      </div>
     </div>
   </div>
-</section>
+<% } %>
+
+<!-- Rich Parsed Family Cards Grid -->
+<% if (typeof parsedFamilies !== 'undefined' && parsedFamilies && parsedFamilies.length > 0) { %>
+  <div class="metrics-cards-grid">
+    <% parsedFamilies.forEach(function (family) { %>
+      <article class="metrics-card">
+        <div class="metrics-card-header">
+          <h3 class="metrics-card-title"><%= family.title %></h3>
+          <span class="severity severity--low" style="font-size: 0.65rem;">Active Family</span>
+        </div>
+        
+        <div class="metrics-card-content">
+          <div>
+            <div class="metrics-label">Abstract definition</div>
+            <p class="metrics-text" style="margin-top: 0.35rem;"><%= family.abstract %></p>
+          </div>
+          
+          <% if (family.concrete) { %>
+            <div>
+              <div class="metrics-label" style="margin-bottom: 0.5rem;">Behavioral Triggers</div>
+              <div class="metrics-chips">
+                <% 
+                  // Regex split to correctly parse quoted strings containing commas
+                  var chips = family.concrete.split(/,\s*(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+                  chips.forEach(function (chip) {
+                    if (chip.trim()) {
+                      // Remove leading/trailing quotes or brackets
+                      var cleanChip = chip.trim().replace(/^['"`]|['"`]$/g, '').replace(/\\`/g, '`');
+                %>
+                      <span class="metrics-chip"><%= cleanChip %></span>
+                <% 
+                    }
+                  }); 
+                %>
+              </div>
+            </div>
+          <% } %>
+        </div>
+      </article>
+    <% }); %>
+  </div>
+<% } %>
+
+<!-- Collapsible Raw Markdown Source View (Backward Compatibility) -->
+<details class="panel fallback-pre-panel" style="margin-bottom: 3rem; background: hsl(var(--bg-secondary) / 0.3);">
+  <summary style="padding: 1.25rem 1.5rem; font-weight: 700; color: hsl(var(--text-muted)); cursor: pointer; user-select: none;">
+    <span style="display: inline-flex; align-items: center; gap: 0.5rem;">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="color: hsl(var(--text-dark));">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+      </svg>
+      Show Raw drift-abstracts.md Source File
+    </span>
+  </summary>
+  <div class="panel-body" style="border-top: 1px solid hsl(var(--border) / 0.4); padding: 1.5rem;">
+    <p style="font-size: 0.85rem; color: hsl(var(--text-muted)); margin-bottom: 1rem;">
+      Below is the unprocessed, read-only content of <code style="font-family: var(--font-mono); color: hsl(var(--accent));">docs/drift-abstracts.md</code>.
+    </p>
+    <pre class="metrics-pre"><%= content %></pre>
+  </div>
+</details>
 
 <%- include('partials/footer') %>
